@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-const Lift = () => {
+const Lift = ({queue}) => {
 
-  const [isMoving, setIsMoving] = useState(false);
-  const [currentFloor, setCurrentFloor] = useState("Idle");
-  let floors = Array.from({ length: 10 }, (_, i) => 9 - i);
+    const [isMoving, setIsMoving] = useState(false);
+    const [currentFloor, setCurrentFloor] = useState(0);
+    let floors = Array.from({ length: 10 }, (_, i) => 9 - i);
+
+    useEffect(() => {
+        if(queue.length > 0 && isMoving === false){
+          let target = queue[0]
+          console.log("target" + target)
+          setCurrentFloor(target);
+          setIsMoving(true)
+        }
+    },[queue,isMoving])
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="relative w-80 h-[600px] bg-gray-200 border-2 border-gray-400 rounded-lg overflow-hidden">
