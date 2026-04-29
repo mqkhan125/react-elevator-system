@@ -9,7 +9,7 @@ const App = () => {
     <div className="flex justify-center items-center gap-8">
     <ControlPanel queue={queue}
     setQueue={setQueue} />
-    <Lift queue={queue}/>
+    <Lift queue={queue} setQueue={setQueue}/>
     </div>
     </>
   )

@@ -1,19 +1,31 @@
 import { useEffect, useState } from "react";
 
-const Lift = ({queue}) => {
+const Lift = ({ queue, setQueue }) => {
+  const [isMoving, setIsMoving] = useState(false);
+  const [currentFloor, setCurrentFloor] = useState(0);
+  let floors = Array.from({ length: 10 }, (_, i) => 9 - i);
 
-    const [isMoving, setIsMoving] = useState(false);
-    const [currentFloor, setCurrentFloor] = useState(0);
-    let floors = Array.from({ length: 10 }, (_, i) => 9 - i);
+  useEffect(() => {
+    if (queue.length > 0 && !isMoving) {
+      processNextFloor();
+    }
+  }, [queue]);
 
-    useEffect(() => {
-        if(queue.length > 0 && isMoving === false){
-          let target = queue[0]
-          console.log("target" + target)
-          setCurrentFloor(target);
-          setIsMoving(true)
-        }
-    },[queue,isMoving])
+  const processNextFloor = () => {
+    if (queue.length === 0) {
+      setIsMoving(false);
+      return;
+    }
+    const target = queue[0];
+    setIsMoving(true);
+    setCurrentFloor(target);
+
+    setTimeout(() => {
+      setQueue((prev) => prev.slice(1));
+
+      processNextFloor();
+    }, 5000);
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
