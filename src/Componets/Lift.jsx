@@ -2,29 +2,54 @@ import { useEffect, useState } from "react";
 
 const Lift = ({ queue, setQueue }) => {
   const [isMoving, setIsMoving] = useState(false);
+  const [liftStatus, setLiftStatus] = useState("Idle");
   const [currentFloor, setCurrentFloor] = useState(0);
   let floors = Array.from({ length: 10 }, (_, i) => 9 - i);
 
   useEffect(() => {
-    if (queue.length > 0 && !isMoving) {
+    if (queue.length > 0 && liftStatus === "IDLE") {
       processNextFloor();
     }
-  }, [queue]);
+  }, [queue, liftStatus]);
 
   const processNextFloor = () => {
-    if (queue.length === 0) {
-      setIsMoving(false);
-      return;
-    }
-    const target = queue[0];
+    if (queue.length === 0) return; // safety
+
+    const nextFloorRaw = queue[0];
+    const targetFloor = nextFloorRaw === "G" ? 0 : nextFloorRaw;
+
+    moveToFloor(targetFloor);
+  };
+
+  const moveToFloor = (targetFloor) => {
+    setLiftStatus("MOVING");
     setIsMoving(true);
-    setCurrentFloor(target);
+
+    const distance = Math.abs(targetFloor - currentFloor);
+    const travelDuration = distance * 2000;
+
+    setCurrentFloor(targetFloor);
 
     setTimeout(() => {
-      setQueue((prev) => prev.slice(1));
+      stopAtFloor();
+    }, travelDuration);
+  };
 
-      processNextFloor();
-    }, 5000);
+  const stopAtFloor = () => {
+    setLiftStatus("STOP");
+
+    setTimeout(() => {
+      completeRequest();
+    }, 3000);
+  };
+
+  const completeRequest = () => {
+    setQueue((prev) => prev.slice(1));
+
+    if (queue.length <= 1) {
+      setLiftStatus("IDLE");
+      setIsMoving(false);
+    }
   };
 
   return (
