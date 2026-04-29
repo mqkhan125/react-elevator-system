@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 
 const Lift = ({ queue, setQueue }) => {
   const [isMoving, setIsMoving] = useState(false);
-  const [liftStatus, setLiftStatus] = useState("Idle");
+  const [liftStatus, setLiftStatus] = useState("IDLE");
   const [currentFloor, setCurrentFloor] = useState(0);
+
   let floors = Array.from({ length: 10 }, (_, i) => 9 - i);
 
   useEffect(() => {
@@ -13,7 +14,7 @@ const Lift = ({ queue, setQueue }) => {
   }, [queue, liftStatus]);
 
   const processNextFloor = () => {
-    if (queue.length === 0) return; // safety
+    if (queue.length === 0) return;
 
     const nextFloorRaw = queue[0];
     const targetFloor = nextFloorRaw === "G" ? 0 : nextFloorRaw;
@@ -44,12 +45,17 @@ const Lift = ({ queue, setQueue }) => {
   };
 
   const completeRequest = () => {
-    setQueue((prev) => prev.slice(1));
+    setQueue((prev) => {
+      const updated = prev.slice(1);
 
-    if (queue.length <= 1) {
-      setLiftStatus("IDLE");
-      setIsMoving(false);
-    }
+      // ✅ FIX: correct state decision using updated queue
+      if (updated.length === 0) {
+        setLiftStatus("IDLE");
+        setIsMoving(false);
+      }
+
+      return updated;
+    });
   };
 
   return (
@@ -64,13 +70,15 @@ const Lift = ({ queue, setQueue }) => {
               <span className="text-sm font-semibold text-gray-700">
                 {floor === 0 ? "G" : floor}
               </span>
+
               <div className="w-10 h-full border-l border-gray-400 bg-gray-100"></div>
             </div>
           ))}
         </div>
+
         <div
           className="absolute bottom-0 right-0 w-12 h-[60px] bg-red-500 rounded-md shadow-lg
-         flex items-center justify-center text-white text-md font-bold"
+          flex items-center justify-center text-white text-md font-bold"
         >
           🚪
         </div>
