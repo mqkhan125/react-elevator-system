@@ -1,7 +1,6 @@
-
 const Lift = () => {
-      let floors = Array.from({length:10}, (_,i) => 9 - i)
-    return (
+  let floors = Array.from({ length: 10 }, (_, i) => 9 - i);
+  return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="relative w-80 h-[600px] bg-gray-200 border-2 border-gray-400 rounded-lg overflow-hidden">
         <div className="flex flex-col h-full">
@@ -17,9 +16,15 @@ const Lift = () => {
             </div>
           ))}
         </div>
+        <div
+          className="absolute bottom-0 right-0 w-12 h-[60px] bg-red-500 rounded-md shadow-lg
+         flex items-center justify-center text-white text-md font-bold"
+        >
+          🚪
+        </div>
       </div>
     </div>
   );
-}
+};
 
-export default Lift
+export default Lift;
