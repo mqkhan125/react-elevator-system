@@ -1,4 +1,9 @@
+import { useState } from "react";
+
 const Lift = () => {
+
+  const [isMoving, setIsMoving] = useState(false);
+  const [currentFloor, setCurrentFloor] = useState("Idle");
   let floors = Array.from({ length: 10 }, (_, i) => 9 - i);
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
