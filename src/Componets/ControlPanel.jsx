@@ -5,8 +5,14 @@ const ControlPanel = () => {
   const [queue, setQueue] = useState([]);
   const buttons = ["G", 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-  const handleValue = (e) => {
-    setQueue((prev) => [...prev, e])
+  const handleValue = (floorId) => {
+    setQueue((prevQueue) => {
+        if(prevQueue.includes(floorId)){
+            return prevQueue.filter((id) => id !== floorId)
+        } else {
+            return [...prevQueue, floorId]
+        }
+    })
   };
 
     return (
