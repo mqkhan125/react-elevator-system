@@ -26,15 +26,24 @@ const Lift = ({ queue, setQueue }) => {
   };
 
   const moveToFloor = (targetFloor) => {
+    // ✅ FIX: same floor request
+    if (targetFloor === currentFloor) {
+      stopAtFloor();
+      return;
+    }
+
     setIsMoving(true);
     setLiftStatus("MOVING");
     setDirection(targetFloor > currentFloor ? "UP" : "DOWN");
-    setDoorOpen(false); 
+    setDoorOpen(false);
 
     if (intervalRef.current) clearInterval(intervalRef.current);
 
     intervalRef.current = setInterval(() => {
       setCurrentFloor((prev) => {
+        // ✅ safety check
+        if (prev === targetFloor) return prev;
+
         const step = targetFloor > prev ? 1 : -1;
         const next = prev + step;
 
@@ -44,28 +53,28 @@ const Lift = ({ queue, setQueue }) => {
 
           setTimeout(() => {
             stopAtFloor();
-          }, 200);
+          }, 200); // smooth stop delay
         }
 
         return next;
       });
-    }, 2000); 
+    }, 2000); // ⬅ interviewer requirement (2 sec per floor)
   };
 
   const stopAtFloor = () => {
     setLiftStatus("STOP");
 
-    
+    // door open
     setTimeout(() => {
       setDoorOpen(true);
     }, 300);
 
-    
+    // door close
     setTimeout(() => {
       setDoorOpen(false);
     }, 2500);
 
-
+    // complete request
     setTimeout(() => {
       setQueue((prev) => prev.slice(1));
       setIsMoving(false);
@@ -109,7 +118,7 @@ const Lift = ({ queue, setQueue }) => {
           >
             <span className="text-sm">{floor === 0 ? "G" : floor}</span>
 
-            <div className="w-10 h-full border-l border-gray-500 flex items-center justify-center"></div>
+            <div className="w-10 h-full border-l border-gray-500"></div>
           </div>
         ))}
 
