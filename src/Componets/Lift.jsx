@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 const Lift = ({ queue, setQueue }) => {
-  const [isMoving, setIsMoving] = useState(false);
   const [liftStatus, setLiftStatus] = useState("IDLE");
   const [currentFloor, setCurrentFloor] = useState(0);
 
+  const intervalRef = useRef(null);
+
   let floors = Array.from({ length: 10 }, (_, i) => 9 - i);
+
 
   useEffect(() => {
     if (queue.length > 0 && liftStatus === "IDLE") {
@@ -16,24 +18,30 @@ const Lift = ({ queue, setQueue }) => {
   const processNextFloor = () => {
     if (queue.length === 0) return;
 
-    const nextFloorRaw = queue[0];
-    const targetFloor = nextFloorRaw === "G" ? 0 : nextFloorRaw;
-
+    const targetFloor = queue[0] === "G" ? 0 : queue[0];
     moveToFloor(targetFloor);
   };
 
   const moveToFloor = (targetFloor) => {
     setLiftStatus("MOVING");
-    setIsMoving(true);
 
-    const distance = Math.abs(targetFloor - currentFloor);
-    const travelDuration = distance * 2000;
+    // safety: stop previous interval if any
+    if (intervalRef.current) clearInterval(intervalRef.current);
 
-    setCurrentFloor(targetFloor);
+    intervalRef.current = setInterval(() => {
+      setCurrentFloor((prev) => {
+        const step = targetFloor > prev ? 1 : -1;
+        const next = prev + step;
 
-    setTimeout(() => {
-      stopAtFloor();
-    }, travelDuration);
+        if (next === targetFloor) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+          stopAtFloor();
+        }
+
+        return next;
+      });
+    }, 2000);
   };
 
   const stopAtFloor = () => {
@@ -41,17 +49,15 @@ const Lift = ({ queue, setQueue }) => {
 
     setTimeout(() => {
       completeRequest();
-    }, 3000);
+    }, 3000); 
   };
 
   const completeRequest = () => {
     setQueue((prev) => {
       const updated = prev.slice(1);
 
-      // ✅ FIX: correct state decision using updated queue
       if (updated.length === 0) {
         setLiftStatus("IDLE");
-        setIsMoving(false);
       }
 
       return updated;
@@ -61,6 +67,7 @@ const Lift = ({ queue, setQueue }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="relative w-80 h-[600px] bg-gray-200 border-2 border-gray-400 rounded-lg overflow-hidden">
+        {/* Floors */}
         <div className="flex flex-col h-full">
           {floors.map((floor) => (
             <div
@@ -70,12 +77,12 @@ const Lift = ({ queue, setQueue }) => {
               <span className="text-sm font-semibold text-gray-700">
                 {floor === 0 ? "G" : floor}
               </span>
-
               <div className="w-10 h-full border-l border-gray-400 bg-gray-100"></div>
             </div>
           ))}
         </div>
 
+        {/* Lift box */}
         <div
           className="absolute bottom-0 right-0 w-12 h-[60px] bg-red-500 rounded-md shadow-lg
           flex items-center justify-center text-white text-md font-bold"
