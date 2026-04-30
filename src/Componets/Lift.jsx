@@ -8,7 +8,6 @@ const Lift = ({ queue, setQueue }) => {
 
   let floors = Array.from({ length: 10 }, (_, i) => 9 - i);
 
-
   useEffect(() => {
     if (queue.length > 0 && liftStatus === "IDLE") {
       processNextFloor();
@@ -49,7 +48,7 @@ const Lift = ({ queue, setQueue }) => {
 
     setTimeout(() => {
       completeRequest();
-    }, 3000); 
+    }, 3000);
   };
 
   const completeRequest = () => {
@@ -62,6 +61,13 @@ const Lift = ({ queue, setQueue }) => {
 
       return updated;
     });
+  };
+
+  const FLOOR_HEIGHT = 60;
+
+  const liftStyle = {
+    top: `${(9 - currentFloor) * FLOOR_HEIGHT}px`,
+    transition: "top 0.5s ease-in-out",
   };
 
   return (
@@ -85,7 +91,8 @@ const Lift = ({ queue, setQueue }) => {
         {/* Lift box */}
         <div
           className="absolute bottom-0 right-0 w-12 h-[60px] bg-red-500 rounded-md shadow-lg
-          flex items-center justify-center text-white text-md font-bold"
+            flex items-center justify-center text-white text-md font-bold"
+          style={liftStyle}
         >
           🚪
         </div>
