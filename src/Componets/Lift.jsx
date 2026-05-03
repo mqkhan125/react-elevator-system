@@ -20,7 +20,6 @@ const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
     }
   }, [queue, isMoving, isEmergency]);
 
-  // Handle emergency state changes
   useEffect(() => {
     if (isEmergency) {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -34,7 +33,6 @@ const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
     }
   }, [isEmergency]);
 
-  // Timer countdown logic
   useEffect(() => {
     if (timer > 0) {
       timerRef.current = setInterval(() => {
@@ -44,40 +42,58 @@ const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
     return () => clearInterval(timerRef.current);
   }, [timer]);
 
+  // ✅ Check if current floor should stop
+  const shouldStopAtFloor = (floor) => {
+    return queue.some((f) => (f === "G" ? 0 : f) === floor);
+  };
+
   const runNext = () => {
     if (queue.length === 0 || isMoving || isEmergency) return;
 
-    const targetFloor = queue[0] === "G" ? 0 : queue[0];
-    moveToFloor(targetFloor);
+    const target = queue[0] === "G" ? 0 : queue[0];
+    setDirection(target > currentFloor ? "UP" : "DOWN");
+
+    moveLift();
   };
 
-  const moveToFloor = (targetFloor) => {
-    if (targetFloor === currentFloor) {
-      stopAtFloor();
-      return;
-    }
-
+  // ✅ NEW: move step-by-step instead of jumping to target
+  const moveLift = () => {
     setIsMoving(true);
     setLiftStatus("MOVING");
-    setDirection(targetFloor > currentFloor ? "UP" : "DOWN");
     setDoorOpen(false);
 
     if (intervalRef.current) clearInterval(intervalRef.current);
 
     intervalRef.current = setInterval(() => {
       setCurrentFloor((prev) => {
-        if (isEmergency || prev === targetFloor) return prev;
+        if (isEmergency) return prev;
 
-        const step = targetFloor > prev ? 1 : -1;
+        const step = direction === "UP" ? 1 : -1;
         const next = prev + step;
 
-        if (next === targetFloor) {
+        // ✅ Stop if this floor is in queue
+        if (shouldStopAtFloor(next)) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
 
-          setTimeout(() => {
-            stopAtFloor();
-          }, 200);
+          setTimeout(() => stopAtFloor(next), 200);
+          return next;
+        }
+
+        // ✅ Check if no more requests in this direction
+        const remaining = queue.map((f) => (f === "G" ? 0 : f));
+
+        const hasMoreInDirection =
+          direction === "UP"
+            ? remaining.some((f) => f > next)
+            : remaining.some((f) => f < next);
+
+        if (!hasMoreInDirection) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+
+          setTimeout(() => stopAtFloor(next), 200);
+          return next;
         }
 
         return next;
@@ -85,7 +101,7 @@ const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
     }, 2000);
   };
 
-  const stopAtFloor = () => {
+  const stopAtFloor = (floor) => {
     setLiftStatus("STOP");
     setTimer(3);
 
@@ -98,7 +114,14 @@ const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
     }, 2500);
 
     setTimeout(() => {
-      setQueue((prev) => prev.slice(1));
+      // ✅ Remove ONLY current floor
+      setQueue((prev) =>
+        prev.filter((f) => {
+          const val = f === "G" ? 0 : f;
+          return val !== floor;
+        }),
+      );
+
       setIsMoving(false);
       setLiftStatus("IDLE");
       setTimer(0);
@@ -145,7 +168,7 @@ const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
           </div>
         ))}
 
-        {/* Lift Cabin & Clock Timer UI */}
+        {/* Lift Cabin & Timer UI (UNCHANGED) */}
         <div
           className="absolute right-0 w-24 h-[50px] flex items-center gap-1 transition-all duration-300"
           style={{
@@ -153,7 +176,6 @@ const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
             transition: "top 1.7s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         >
-          {/* Timer Display to the left of the Lift Cabin */}
           {timer > 0 && (
             <div className="flex items-center gap-1 bg-blue-600/90 text-white font-bold px-2 py-1 rounded-md shadow text-[11px] animate-pulse">
               <span>⏰</span>
@@ -161,7 +183,6 @@ const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
             </div>
           )}
 
-          {/* Lift Box */}
           <div className="w-12 h-[50px] bg-red-500 rounded shadow-md flex items-center justify-center text-white font-bold text-lg select-none">
             <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
               <div
