@@ -1,32 +1,57 @@
 import { useEffect, useState, useRef } from "react";
 
-const Lift = ({ queue, setQueue }) => {
+const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
   const [currentFloor, setCurrentFloor] = useState(0);
   const [liftStatus, setLiftStatus] = useState("IDLE");
   const [isMoving, setIsMoving] = useState(false);
   const [direction, setDirection] = useState(null);
   const [doorOpen, setDoorOpen] = useState(false);
+  const [timer, setTimer] = useState(0);
 
   const intervalRef = useRef(null);
+  const timerRef = useRef(null);
 
-  const FLOOR_HEIGHT = 46;
+  const FLOOR_HEIGHT = 52;
   const floors = Array.from({ length: 10 }, (_, i) => 9 - i);
 
   useEffect(() => {
-    if (queue.length > 0 && !isMoving) {
+    if (queue.length > 0 && !isMoving && !isEmergency) {
       runNext();
     }
-  }, [queue, isMoving]);
+  }, [queue, isMoving, isEmergency]);
+
+  // Handle emergency state changes
+  useEffect(() => {
+    if (isEmergency) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
+      setIsMoving(false);
+      setLiftStatus("EMERGENCY STOP");
+    } else if (queue.length > 0) {
+      runNext();
+    } else {
+      setLiftStatus("IDLE");
+    }
+  }, [isEmergency]);
+
+  // Timer countdown logic
+  useEffect(() => {
+    if (timer > 0) {
+      timerRef.current = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [timer]);
 
   const runNext = () => {
-    if (queue.length === 0 || isMoving) return;
+    if (queue.length === 0 || isMoving || isEmergency) return;
 
     const targetFloor = queue[0] === "G" ? 0 : queue[0];
     moveToFloor(targetFloor);
   };
 
   const moveToFloor = (targetFloor) => {
-    // ✅ FIX: same floor request
     if (targetFloor === currentFloor) {
       stopAtFloor();
       return;
@@ -41,8 +66,7 @@ const Lift = ({ queue, setQueue }) => {
 
     intervalRef.current = setInterval(() => {
       setCurrentFloor((prev) => {
-        // ✅ safety check
-        if (prev === targetFloor) return prev;
+        if (isEmergency || prev === targetFloor) return prev;
 
         const step = targetFloor > prev ? 1 : -1;
         const next = prev + step;
@@ -53,50 +77,50 @@ const Lift = ({ queue, setQueue }) => {
 
           setTimeout(() => {
             stopAtFloor();
-          }, 200); // smooth stop delay
+          }, 200);
         }
 
         return next;
       });
-    }, 2000); // ⬅ interviewer requirement (2 sec per floor)
+    }, 2000);
   };
 
   const stopAtFloor = () => {
     setLiftStatus("STOP");
+    setTimer(3);
 
-    // door open
     setTimeout(() => {
       setDoorOpen(true);
     }, 300);
 
-    // door close
     setTimeout(() => {
       setDoorOpen(false);
     }, 2500);
 
-    // complete request
     setTimeout(() => {
       setQueue((prev) => prev.slice(1));
       setIsMoving(false);
       setLiftStatus("IDLE");
+      setTimer(0);
     }, 3000);
   };
 
   const liftPosition = (9 - currentFloor) * FLOOR_HEIGHT;
 
   return (
-    <div className="relative w-80 h-[500px] bg-gray-100 border-2 border-gray-400 rounded-md overflow-hidden flex flex-col shadow-md">
-      {/* HEADER */}
+    <div className="relative w-80 h-[560px] bg-gray-100 border-2 border-gray-400 rounded-md overflow-hidden flex flex-col shadow-md">
       <div className="bg-gray-800 p-2 border-b border-gray-400 flex justify-between items-center px-6 text-white">
-        <span className="text-xs font-mono uppercase tracking-widest">
+        <span className="text-xs font-mono uppercase tracking-widest flex items-center gap-2">
           Status:
           <span
             className={`ml-1 font-bold px-2 py-0.5 rounded text-[10px] ${
-              liftStatus === "MOVING"
-                ? "bg-yellow-400/20 text-yellow-300 animate-pulse"
-                : liftStatus === "STOP"
-                  ? "bg-red-400/20 text-red-300"
-                  : "bg-green-400/20 text-green-300"
+              isEmergency
+                ? "bg-purple-400/20 text-purple-300 animate-bounce"
+                : liftStatus === "MOVING"
+                  ? "bg-yellow-400/20 text-yellow-300 animate-pulse"
+                  : liftStatus === "STOP"
+                    ? "bg-red-400/20 text-red-300"
+                    : "bg-green-400/20 text-green-300"
             }`}
           >
             {liftStatus}
@@ -104,12 +128,11 @@ const Lift = ({ queue, setQueue }) => {
         </span>
 
         <span className="text-xs font-semibold">
-          Target:{" "}
-          {queue[0] !== undefined ? (queue[0] === 0 ? "G" : queue[0]) : "None"}
+          Direction:{" "}
+          {liftStatus === "MOVING" ? (direction === "UP" ? "⬆️" : "⬇️") : "⏹️"}
         </span>
       </div>
 
-      {/* FLOORS */}
       <div className="relative flex-col flex h-full justify-between">
         {floors.map((floor) => (
           <div
@@ -122,38 +145,49 @@ const Lift = ({ queue, setQueue }) => {
           </div>
         ))}
 
-        {/* LIFT */}
+        {/* Lift Cabin & Clock Timer UI */}
         <div
-          className="absolute right-1 w-12 h-[45px] bg-red-500 rounded shadow-md flex items-center justify-center text-white font-bold text-lg select-none"
+          className="absolute right-0 w-24 h-[50px] flex items-center gap-1 transition-all duration-300"
           style={{
             top: `${liftPosition}px`,
             transition: "top 1.7s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         >
-          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-            {/* DOORS */}
-            <div
-              className={`absolute left-0 top-0 h-full w-1/2 bg-gray-700 transition-all duration-500
-              ${doorOpen ? "-translate-x-full" : "translate-x-0"}`}
-            />
-            <div
-              className={`absolute right-0 top-0 h-full w-1/2 bg-gray-700 transition-all duration-500
-              ${doorOpen ? "translate-x-full" : "translate-x-0"}`}
-            />
+          {/* Timer Display to the left of the Lift Cabin */}
+          {timer > 0 && (
+            <div className="flex items-center gap-1 bg-blue-600/90 text-white font-bold px-2 py-1 rounded-md shadow text-[11px] animate-pulse">
+              <span>⏰</span>
+              <span>{timer}s</span>
+            </div>
+          )}
 
-            {/* CONTENT */}
-            <div className="z-10 flex flex-col items-center">
-              <span className="text-xs font-mono animate-pulse">
-                {currentFloor === 0 ? "G" : currentFloor}
-              </span>
+          {/* Lift Box */}
+          <div className="w-12 h-[50px] bg-red-500 rounded shadow-md flex items-center justify-center text-white font-bold text-lg select-none">
+            <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+              <div
+                className={`absolute left-0 top-0 h-full w-1/2 bg-gray-700 transition-all duration-500 ${
+                  doorOpen ? "-translate-x-full" : "translate-x-0"
+                }`}
+              />
+              <div
+                className={`absolute right-0 top-0 h-full w-1/2 bg-gray-700 transition-all duration-500 ${
+                  doorOpen ? "translate-x-full" : "translate-x-0"
+                }`}
+              />
 
-              <span className="text-[14px]">
-                {liftStatus === "MOVING"
-                  ? direction === "UP"
-                    ? "⬆️"
-                    : "⬇️"
-                  : "⏹️"}
-              </span>
+              <div className="z-10 flex flex-col items-center">
+                <span className="text-xs font-mono animate-pulse">
+                  {currentFloor === 0 ? "G" : currentFloor}
+                </span>
+
+                <span className="text-[14px]">
+                  {liftStatus === "MOVING"
+                    ? direction === "UP"
+                      ? "⬆️"
+                      : "⬇️"
+                    : "⏹️"}
+                </span>
+              </div>
             </div>
           </div>
         </div>

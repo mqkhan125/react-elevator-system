@@ -1,4 +1,4 @@
-const ControlPanel = ({ setQueue, queue }) => {
+const ControlPanel = ({ setQueue, queue, isEmergency, setIsEmergency }) => {
   const buttons = ["G", 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
   const handleValue = (floorId) => {
@@ -14,9 +14,23 @@ const ControlPanel = ({ setQueue, queue }) => {
         Lift Control Panel
       </h2>
 
-      <p className="text-center text-sm text-gray-600 mb-6 font-mono">
+      <p className="text-center text-sm text-gray-600 mb-4 font-mono">
         Queue: [{queue.length > 0 ? queue.join(", ") : "Empty"}]
       </p>
+
+      {/* Emergency Control Button */}
+      <div className="flex justify-center mb-6">
+        <button
+          onClick={() => setIsEmergency((prev) => !prev)}
+          className={`w-full py-2 text-sm font-bold rounded-md border transition text-center shadow-sm ${
+            isEmergency
+              ? "bg-purple-600 text-white border-purple-700 animate-bounce"
+              : "bg-red-600 text-white border-red-700 hover:bg-red-700"
+          }`}
+        >
+          {isEmergency ? "🚨 RESUME LIFT" : "🚨 EMERGENCY STOP"}
+        </button>
+      </div>
 
       <div className="grid grid-cols-5 gap-3">
         {buttons.map((floor) => {
