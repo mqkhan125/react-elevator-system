@@ -18,7 +18,7 @@ const ControlPanel = ({ setQueue, queue, isEmergency, setIsEmergency }) => {
         Queue: [{queue.length > 0 ? queue.join(", ") : "Empty"}]
       </p>
 
-      {/* Emergency Control Button */}
+  
       <div className="flex justify-center mb-6">
         <button
           onClick={() => setIsEmergency((prev) => !prev)}

@@ -1,38 +1,71 @@
 import { useEffect, useState, useRef } from "react";
 
-const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
+const Lift = ({ queue, setQueue, isEmergency }) => {
   const [currentFloor, setCurrentFloor] = useState(0);
-  const [liftStatus, setLiftStatus] = useState("IDLE");
-  const [isMoving, setIsMoving] = useState(false);
-  const [direction, setDirection] = useState(null);
+  const [direction, setDirection] = useState("idle"); 
   const [doorOpen, setDoorOpen] = useState(false);
   const [timer, setTimer] = useState(0);
 
-  const intervalRef = useRef(null);
+  const moveRef = useRef(null);
   const timerRef = useRef(null);
 
   const FLOOR_HEIGHT = 52;
   const floors = Array.from({ length: 10 }, (_, i) => 9 - i);
 
-  useEffect(() => {
-    if (queue.length > 0 && !isMoving && !isEmergency) {
-      runNext();
-    }
-  }, [queue, isMoving, isEmergency]);
+  // normalize queue (G → 0)
+  const normalize = (arr) => arr.map((f) => (f === "G" ? 0 : f));
 
+  // 🚆 MOVE LIFT (2 sec per floor)
   useEffect(() => {
-    if (isEmergency) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (timerRef.current) clearInterval(timerRef.current);
-      setIsMoving(false);
-      setLiftStatus("EMERGENCY STOP");
-    } else if (queue.length > 0) {
-      runNext();
-    } else {
-      setLiftStatus("IDLE");
-    }
-  }, [isEmergency]);
+    if (direction === "idle" || isEmergency || doorOpen) return;
 
+    moveRef.current = setTimeout(() => {
+      setCurrentFloor((prev) => {
+        if (direction === "up") return prev + 1;
+        if (direction === "down") return prev - 1;
+        return prev;
+      });
+    }, 2000);
+
+    return () => clearTimeout(moveRef.current);
+  }, [currentFloor, direction, isEmergency, doorOpen]);
+
+  // 🛑 STOP AT FLOOR (after reaching)
+  useEffect(() => {
+    const normalized = normalize(queue);
+
+    if (normalized.includes(currentFloor)) {
+      // stop movement
+      setDirection("idle");
+
+      // slight delay for smooth arrival
+      const arriveDelay = setTimeout(() => {
+        setDoorOpen(true);
+        setTimer(3);
+
+        // remove floor from queue
+        setQueue((prev) =>
+          prev.filter((f) => {
+            const val = f === "G" ? 0 : f;
+            return val !== currentFloor;
+          }),
+        );
+
+        // wait 3 sec
+        const doorTimer = setTimeout(() => {
+          setDoorOpen(false);
+          setTimer(0);
+          decideDirection();
+        }, 3000);
+
+        return () => clearTimeout(doorTimer);
+      }, 200);
+
+      return () => clearTimeout(arriveDelay);
+    }
+  }, [currentFloor]);
+
+  // ⏱ TIMER DISPLAY
   useEffect(() => {
     if (timer > 0) {
       timerRef.current = setInterval(() => {
@@ -42,133 +75,61 @@ const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
     return () => clearInterval(timerRef.current);
   }, [timer]);
 
-  // ✅ Check if current floor should stop
-  const shouldStopAtFloor = (floor) => {
-    return queue.some((f) => (f === "G" ? 0 : f) === floor);
+  // 🔁 DECIDE NEXT DIRECTION (simple & correct)
+  const decideDirection = () => {
+    const normalized = normalize(queue);
+
+    let hasUp = false;
+    let hasDown = false;
+
+    normalized.forEach((f) => {
+      if (f > currentFloor) hasUp = true;
+      if (f < currentFloor) hasDown = true;
+    });
+
+    if (hasUp) setDirection("up");
+    else if (hasDown) setDirection("down");
+    else setDirection("idle");
   };
 
-  const runNext = () => {
-    if (queue.length === 0 || isMoving || isEmergency) return;
+  // ▶ START MOVEMENT WHEN QUEUE COMES
+  useEffect(() => {
+    if (queue.length > 0 && direction === "idle" && !isEmergency) {
+      const target = queue[0] === "G" ? 0 : queue[0];
 
-    const target = queue[0] === "G" ? 0 : queue[0];
-    setDirection(target > currentFloor ? "UP" : "DOWN");
-
-    moveLift();
-  };
-
-  // ✅ NEW: move step-by-step instead of jumping to target
-  const moveLift = () => {
-    setIsMoving(true);
-    setLiftStatus("MOVING");
-    setDoorOpen(false);
-
-    if (intervalRef.current) clearInterval(intervalRef.current);
-
-    intervalRef.current = setInterval(() => {
-      setCurrentFloor((prev) => {
-        if (isEmergency) return prev;
-
-        const step = direction === "UP" ? 1 : -1;
-        const next = prev + step;
-
-        // ✅ Stop if this floor is in queue
-        if (shouldStopAtFloor(next)) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-
-          setTimeout(() => stopAtFloor(next), 200);
-          return next;
-        }
-
-        // ✅ Check if no more requests in this direction
-        const remaining = queue.map((f) => (f === "G" ? 0 : f));
-
-        const hasMoreInDirection =
-          direction === "UP"
-            ? remaining.some((f) => f > next)
-            : remaining.some((f) => f < next);
-
-        if (!hasMoreInDirection) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-
-          setTimeout(() => stopAtFloor(next), 200);
-          return next;
-        }
-
-        return next;
-      });
-    }, 2000);
-  };
-
-  const stopAtFloor = (floor) => {
-    setLiftStatus("STOP");
-    setTimer(3);
-
-    setTimeout(() => {
-      setDoorOpen(true);
-    }, 300);
-
-    setTimeout(() => {
-      setDoorOpen(false);
-    }, 2500);
-
-    setTimeout(() => {
-      // ✅ Remove ONLY current floor
-      setQueue((prev) =>
-        prev.filter((f) => {
-          const val = f === "G" ? 0 : f;
-          return val !== floor;
-        }),
-      );
-
-      setIsMoving(false);
-      setLiftStatus("IDLE");
-      setTimer(0);
-    }, 3000);
-  };
+      if (target > currentFloor) setDirection("up");
+      else if (target < currentFloor) setDirection("down");
+    }
+  }, [queue, direction, isEmergency]);
 
   const liftPosition = (9 - currentFloor) * FLOOR_HEIGHT;
 
   return (
     <div className="relative w-80 h-[560px] bg-gray-100 border-2 border-gray-400 rounded-md overflow-hidden flex flex-col shadow-md">
+      {/* HEADER */}
       <div className="bg-gray-800 p-2 border-b border-gray-400 flex justify-between items-center px-6 text-white">
-        <span className="text-xs font-mono uppercase tracking-widest flex items-center gap-2">
-          Status:
-          <span
-            className={`ml-1 font-bold px-2 py-0.5 rounded text-[10px] ${
-              isEmergency
-                ? "bg-purple-400/20 text-purple-300 animate-bounce"
-                : liftStatus === "MOVING"
-                  ? "bg-yellow-400/20 text-yellow-300 animate-pulse"
-                  : liftStatus === "STOP"
-                    ? "bg-red-400/20 text-red-300"
-                    : "bg-green-400/20 text-green-300"
-            }`}
-          >
-            {liftStatus}
-          </span>
+        <span className="text-xs font-mono">
+          Status: {isEmergency ? "EMERGENCY" : direction.toUpperCase()}
         </span>
 
-        <span className="text-xs font-semibold">
-          Direction:{" "}
-          {liftStatus === "MOVING" ? (direction === "UP" ? "⬆️" : "⬇️") : "⏹️"}
+        <span className="text-xs">
+          {direction === "up" ? "⬆️" : direction === "down" ? "⬇️" : "⏹️"}
         </span>
       </div>
 
+      {/* FLOORS */}
       <div className="relative flex-col flex h-full justify-between">
         {floors.map((floor) => (
           <div
             key={floor}
             className="flex-1 border-b border-gray-300 flex items-center justify-between px-5 bg-black text-white font-bold"
           >
-            <span className="text-sm">{floor === 0 ? "G" : floor}</span>
-
+            <span>{floor === 0 ? "G" : floor}</span>
             <div className="w-10 h-full border-l border-gray-500"></div>
           </div>
         ))}
 
-        {/* Lift Cabin & Timer UI (UNCHANGED) */}
+        {/* LIFT */}
         <div
           className="absolute right-0 w-24 h-[50px] flex items-center gap-1 transition-all duration-300"
           style={{
@@ -176,40 +137,30 @@ const Lift = ({ queue, setQueue, isEmergency, setIsEmergency }) => {
             transition: "top 1.7s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         >
+          {/* TIMER */}
           {timer > 0 && (
-            <div className="flex items-center gap-1 bg-blue-600/90 text-white font-bold px-2 py-1 rounded-md shadow text-[11px] animate-pulse">
-              <span>⏰</span>
-              <span>{timer}s</span>
+            <div className="bg-blue-600 text-white px-2 py-1 text-xs rounded animate-pulse">
+              ⏰ {timer}s
             </div>
           )}
 
-          <div className="w-12 h-[50px] bg-red-500 rounded shadow-md flex items-center justify-center text-white font-bold text-lg select-none">
-            <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-              <div
-                className={`absolute left-0 top-0 h-full w-1/2 bg-gray-700 transition-all duration-500 ${
-                  doorOpen ? "-translate-x-full" : "translate-x-0"
-                }`}
-              />
-              <div
-                className={`absolute right-0 top-0 h-full w-1/2 bg-gray-700 transition-all duration-500 ${
-                  doorOpen ? "translate-x-full" : "translate-x-0"
-                }`}
-              />
+          {/* CABIN */}
+          <div className="w-12 h-[50px] bg-red-500 rounded flex items-center justify-center text-white font-bold relative overflow-hidden">
+            {/* DOOR ANIMATION */}
+            <div
+              className={`absolute left-0 top-0 w-1/2 h-full bg-gray-700 transition-transform duration-500 ${
+                doorOpen ? "-translate-x-full" : "translate-x-0"
+              }`}
+            />
+            <div
+              className={`absolute right-0 top-0 w-1/2 h-full bg-gray-700 transition-transform duration-500 ${
+                doorOpen ? "translate-x-full" : "translate-x-0"
+              }`}
+            />
 
-              <div className="z-10 flex flex-col items-center">
-                <span className="text-xs font-mono animate-pulse">
-                  {currentFloor === 0 ? "G" : currentFloor}
-                </span>
-
-                <span className="text-[14px]">
-                  {liftStatus === "MOVING"
-                    ? direction === "UP"
-                      ? "⬆️"
-                      : "⬇️"
-                    : "⏹️"}
-                </span>
-              </div>
-            </div>
+            <span className="z-10">
+              {currentFloor === 0 ? "G" : currentFloor}
+            </span>
           </div>
         </div>
       </div>
