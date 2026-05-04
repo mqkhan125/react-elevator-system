@@ -1,9 +1,24 @@
-const ControlPanel = ({ setQueue, queue, isEmergency, setIsEmergency }) => {
+const ControlPanel = ({
+  setQueue,
+  queue,
+  isEmergency,
+  setIsEmergency,
+  currentFloor,
+}) => {
   const buttons = ["G", 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
   const handleValue = (floorId) => {
+    const value = floorId === "G" ? 0 : floorId;
+
     setQueue((prev) => {
-      if (prev.includes(floorId)) return prev;
+      const normalized = prev.map((f) => (f === "G" ? 0 : f));
+
+      // ❌ already in queue
+      if (normalized.includes(value)) return prev;
+
+      // ❌ already on that floor
+      if (value === currentFloor) return prev;
+
       return [...prev, floorId];
     });
   };
@@ -18,7 +33,7 @@ const ControlPanel = ({ setQueue, queue, isEmergency, setIsEmergency }) => {
         Queue: [{queue.length > 0 ? queue.join(", ") : "Empty"}]
       </p>
 
-  
+      {/* Emergency */}
       <div className="flex justify-center mb-6">
         <button
           onClick={() => setIsEmergency((prev) => !prev)}
@@ -32,9 +47,11 @@ const ControlPanel = ({ setQueue, queue, isEmergency, setIsEmergency }) => {
         </button>
       </div>
 
+      {/* Buttons */}
       <div className="grid grid-cols-5 gap-3">
         {buttons.map((floor) => {
           const isActive = queue.includes(floor);
+
           return (
             <button
               key={floor}
