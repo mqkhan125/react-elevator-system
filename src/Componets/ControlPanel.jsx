@@ -18,44 +18,32 @@ const ControlPanel = ({
   };
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 rounded-2xl shadow-2xl border border-slate-700 w-80 text-white">
-      <h2 className="text-xl font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-blue-400 mb-6">
-        Lift Control Panel
-      </h2>
+    <div className="bg-white p-5 lg:p-6 rounded-2xl shadow-[0_2px_10px_-2px_rgba(0,0,0,0.08)] border border-slate-200 w-full">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+          Control Panel
+        </h2>
 
-      <div className="flex items-center justify-between bg-slate-950/60 px-4 py-3 rounded-xl border border-slate-800 mb-6 backdrop-blur-sm">
-        <span className="text-xs font-medium text-slate-400 tracking-wide uppercase">
-          Active Queue
-        </span>
-        <code className="text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg text-teal-400 font-bold border border-slate-700/50">
-          {queue.length > 0 ? queue.join(", ") : "Empty"}
-        </code>
+        {/* Active Queue Monitor */}
+        <div className="bg-slate-900 text-slate-100 text-[11px] font-mono px-3 py-1.5 rounded-md min-w-[80px] text-center shadow-inner">
+          {queue.length > 0 ? queue.join(" - ") : "---"}
+        </div>
       </div>
 
-      
-      <div className="mb-8">
-        <button
-          onClick={() => setIsEmergency((prev) => !prev)}
-          className={`w-full py-3 px-4 text-sm font-black tracking-wider rounded-xl border transition-all duration-300 shadow-xl flex items-center justify-center gap-2 ${
-            isEmergency
-              ? "bg-gradient-to-r from-purple-600 to-indigo-600 border-purple-500/50 hover:shadow-purple-500/25 animate-bounce text-white"
-              : "bg-gradient-to-r from-red-600 to-rose-600 border-red-500/50 hover:shadow-red-500/25 hover:brightness-110 text-white"
-          }`}
-        >
-          {isEmergency ? (
-            <>
-              <span className="text-lg">🛡️</span> RESUME LIFT
-            </>
-          ) : (
-            <>
-              <span className="text-lg">🚨</span> EMERGENCY STOP
-            </>
-          )}
-        </button>
-      </div>
+      {/* Emergency Button */}
+      <button
+        onClick={() => setIsEmergency((prev) => !prev)}
+        className={`w-full py-3 px-4 text-xs font-extrabold tracking-widest rounded-lg border-2 transition-all duration-200 mb-5 focus:outline-none active:scale-[0.98] ${
+          isEmergency
+            ? "bg-slate-700 border-slate-800 text-slate-200 shadow-inner"
+            : "bg-red-600 border-red-700 text-white hover:bg-red-700 shadow-sm hover:shadow-md"
+        }`}
+      >
+        {isEmergency ? "RESUME OPERATIONS" : "EMERGENCY STOP"}
+      </button>
 
-
-      <div className="grid grid-cols-5 gap-3">
+      {/* Floor Buttons - Physical 3D look */}
+      <div className="grid grid-cols-5 gap-2.5 p-4 bg-slate-50 rounded-xl border border-slate-100">
         {buttons.map((floor) => {
           const isActive = queue.includes(floor);
 
@@ -63,10 +51,10 @@ const ControlPanel = ({
             <button
               key={floor}
               onClick={() => handleValue(floor)}
-              className={`w-12 h-12 rounded-xl text-sm font-extrabold transition-all duration-300 transform active:scale-95 flex items-center justify-center border shadow-md ${
+              className={`w-full aspect-square rounded-lg text-sm font-bold transition-all duration-100 flex items-center justify-center focus:outline-none ${
                 isActive
-                  ? "bg-gradient-to-br from-red-500 to-rose-600 border-red-600 text-white shadow-red-500/30 scale-105 ring-2 ring-red-400/30"
-                  : "bg-slate-800/80 text-slate-300 border-slate-700/60 hover:bg-slate-700 hover:text-teal-400 hover:border-slate-600 hover:shadow-lg"
+                  ? "bg-indigo-600 text-white border border-indigo-700 shadow-[0_2px_4px_-1px_rgba(79,70,229,0.4)] scale-95" // Pressed look when active
+                  : "bg-white text-slate-700 border border-slate-300 border-b-[3px] hover:bg-slate-100 active:scale-95 active:border-b-0 active:mt-[3px]" // 3D physical button effect
               }`}
             >
               {floor}
