@@ -14,15 +14,27 @@ const Lift = ({
   const moveRef = useRef(null);
   const timerRef = useRef(null);
 
+  // YEH REF LATEST QUEUE KE LIYE HAI (PEHLI BUG FIX)
+  const queueRef = useRef(queue);
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
+
+  // NAYA REF: LIFT KO YAD RAKHNE KE LIYE KE WO KIS DIRCTION SE AAYI THI
+  const prevDirectionRef = useRef("idle");
+  useEffect(() => {
+    if (direction !== "idle") {
+      prevDirectionRef.current = direction;
+    }
+  }, [direction]);
+
   const FLOOR_HEIGHT = 51;
   const floors = Array.from({ length: 10 }, (_, i) => 9 - i);
-
   const normalize = (arrQueue) => arrQueue.map((f) => (f === "G" ? 0 : f));
 
   // for lift moving (2 sec per floor)
   useEffect(() => {
     if (direction === "idle" || isEmergency || doorOpen) return;
-
     moveRef.current = setTimeout(() => {
       setCurrentFloor((prev) => {
         if (direction === "up") return prev + 1;
@@ -34,10 +46,52 @@ const Lift = ({
     return () => clearTimeout(moveRef.current);
   }, [currentFloor, direction, isEmergency, doorOpen]);
 
+  // UPDATED DECIDE DIRECTION (REAL LIFT ALGORITHM)
+  const decideDirection = () => {
+    const normalized = normalize(queueRef.current);
+    let hasUp = false;
+    let hasDown = false;
+
+    normalized.forEach((f) => {
+      if (f > currentFloor) hasUp = true;
+      if (f < currentFloor) hasDown = true;
+    });
+
+    const prevDir = prevDirectionRef.current;
+
+    // AGAR LIFT PEHLE DOWN JA RAHI THI
+    if (prevDir === "down") {
+      if (hasDown)
+        setDirection("down"); // Neeche aur floors hain? Neeche hi jao
+      else if (hasUp)
+        setDirection("up"); // Neeche khatam? Ab upar jao
+      else {
+        setDirection("idle");
+        prevDirectionRef.current = "idle"; // Queue khatam, reset memory
+      }
+    }
+    // AGAR LIFT PEHLE UP JA RAHI THI
+    else if (prevDir === "up") {
+      if (hasUp)
+        setDirection("up"); // Upar aur floors hain? Upar hi jao
+      else if (hasDown)
+        setDirection("down"); // Upar khatam? Ab neeche jao
+      else {
+        setDirection("idle");
+        prevDirectionRef.current = "idle"; // Queue khatam, reset memory
+      }
+    }
+    // AGAR LIFT STANDSTILL PAR THI (FRESH START)
+    else {
+      if (hasUp) setDirection("up");
+      else if (hasDown) setDirection("down");
+      else setDirection("idle");
+    }
+  };
+
   // for lift stop (waiting 3 sec)
   useEffect(() => {
     const normalized = normalize(queue);
-
     if (normalized.includes(currentFloor)) {
       setDirection("idle");
 
@@ -55,7 +109,7 @@ const Lift = ({
         const doorTimer = setTimeout(() => {
           setDoorOpen(false);
           setTimer(0);
-          decideDirection();
+          decideDirection(); // AB YE REAL ALGORITHM FOLLOW KAREGA
         }, 3000);
 
         return () => clearTimeout(doorTimer);
@@ -75,36 +129,17 @@ const Lift = ({
     return () => clearInterval(timerRef.current);
   }, [timer]);
 
-  const decideDirection = () => {
-    const normalized = normalize(queue);
-
-    let up = false;
-    let down = false;
-
-    normalized.forEach((f) => {
-      if (f > currentFloor) up = true;
-      if (f < currentFloor) down = true;
-    });
-
-    if (up) setDirection("up");
-    else if (down) setDirection("down");
-    else setDirection("idle");
-  };
-
+  // JAB LIFT IDLE HO AUR DOOR BAND HO, TOH NAYE BUTTON CHECK KARO
   useEffect(() => {
-    if (queue.length > 0 && direction === "idle" && !isEmergency) {
-      const target = queue[0] === "G" ? 0 : queue[0];
-
-      if (target > currentFloor) setDirection("up");
-      else if (target < currentFloor) setDirection("down");
+    if (queue.length > 0 && direction === "idle" && !doorOpen && !isEmergency) {
+      decideDirection();
     }
-  }, [queue, direction, isEmergency]);
+  }, [queue, direction, doorOpen, isEmergency]);
 
   const liftPosition = (9 - currentFloor) * FLOOR_HEIGHT;
 
   return (
     <div className="relative w-80 h-[560px] bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
-
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-3 border-b border-slate-800 flex justify-between px-6 text-slate-200 text-xs tracking-wider items-center">
         <span className="font-semibold flex items-center gap-2">
           <span
@@ -142,7 +177,6 @@ const Lift = ({
           </div>
         ))}
 
-  
         <div
           className="absolute right-0 w-28 h-[50px] flex items-center gap-2 px-1"
           style={{
@@ -156,22 +190,19 @@ const Lift = ({
             </div>
           )}
 
-       
           <div className="w-12 h-[50px] bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl border border-slate-600/60 flex items-center justify-center text-slate-100 font-black relative overflow-hidden shadow-xl shadow-slate-950/50">
-            
             <div
               className={`absolute left-0 top-0 w-1/2 h-full bg-gradient-to-r from-slate-900 to-slate-800 border-r border-slate-700 transition-transform duration-500 ${
                 doorOpen ? "-translate-x-full" : "translate-x-0"
               }`}
             />
-           
+
             <div
               className={`absolute right-0 top-0 w-1/2 h-full bg-gradient-to-r from-slate-800 to-slate-900 border-l border-slate-700 transition-transform duration-500 ${
                 doorOpen ? "translate-x-full" : "translate-x-0"
               }`}
             />
 
-            
             <span className="z-10 bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-blue-400 text-lg">
               {currentFloor === 0 ? "G" : currentFloor}
             </span>

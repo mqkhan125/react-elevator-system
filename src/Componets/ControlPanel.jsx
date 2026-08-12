@@ -9,16 +9,10 @@ const ControlPanel = ({
 
   const handleValue = (floorId) => {
     const value = floorId === "G" ? 0 : floorId;
-
     setQueue((prev) => {
       const normalized = prev.map((f) => (f === "G" ? 0 : f));
-
-      // agar data queue me hai already
       if (normalized.includes(value)) return prev;
-
-      // agar lift currentFloor py hai already
       if (value === currentFloor) return prev;
-
       return [...prev, floorId];
     });
   };
